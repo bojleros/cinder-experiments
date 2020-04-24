@@ -82,12 +82,13 @@ volume_opts = [
     cfg.StrOpt('target_helper',
                default='tgtadm',
                choices=['tgtadm', 'lioadm', 'scstadmin', 'iscsictl',
-                        'ietadm', 'nvmet', 'spdk-nvmeof', 'fake'],
+                        'ietadm', 'nvmet', 'spdk-nvmeof', 'direct', 'fake'],
                help='Target user-land tool to use. tgtadm is default, '
                     'use lioadm for LIO iSCSI support, scstadmin for SCST '
                     'target support, ietadm for iSCSI Enterprise Target, '
                     'iscsictl for Chelsio iSCSI Target, nvmet for NVMEoF '
                     'support, spdk-nvmeof for SPDK NVMe-oF, '
+                    'direct for direct lvm attachment,'
                     'or fake for testing.'),
     cfg.StrOpt('volumes_dir',
                default='$state_path/volumes',
@@ -427,7 +428,9 @@ class BaseVD(object):
             'scstadmin': 'cinder.volume.targets.scst.SCSTAdm',
             'iscsictl': 'cinder.volume.targets.cxt.CxtAdm',
             'nvmet': 'cinder.volume.targets.nvmet.NVMET',
-            'spdk-nvmeof': 'cinder.volume.targets.spdknvmf.SpdkNvmf'}
+            'spdk-nvmeof': 'cinder.volume.targets.spdknvmf.SpdkNvmf',
+            'direct': 'cinder.volume.targets.direct.DirectTarget'
+        }
 
         # set True by manager after successful check_for_setup
         self._initialized = False
@@ -2514,6 +2517,7 @@ class ProxyVD(object):
         __getattr__) without directly inheriting from base volume driver this
         class can help marking them and retrieve the actual used driver object.
     """
+
     def _get_driver(self):
         """Returns the actual driver object.
 
@@ -2794,6 +2798,7 @@ class ISERDriver(ISCSIDriver):
       '<auth method> <auth username> <auth password>'.
       `CHAP` is the only auth_method in use at the moment.
     """
+
     def __init__(self, *args, **kwargs):
         super(ISERDriver, self).__init__(*args, **kwargs)
         # for backward compatibility
@@ -2849,6 +2854,7 @@ class ISERDriver(ISCSIDriver):
 
 class FibreChannelDriver(VolumeDriver):
     """Executes commands relating to Fibre Channel volumes."""
+
     def __init__(self, *args, **kwargs):
         super(FibreChannelDriver, self).__init__(*args, **kwargs)
 
