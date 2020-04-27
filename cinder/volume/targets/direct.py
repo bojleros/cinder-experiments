@@ -42,10 +42,8 @@ class DirectTarget(driver.Target):
         """Creates an export for a logical volume."""
         LOG.debug("Create export on volume %s in path %s" %
                   (volume, volume_path))
-        data = dict()
-        data['device_path'] = volume_path
-        data['auth'] = None
-        data['location'] = volume.availability_zone
+        data = {'device_path': volume_path, 'auth': None,
+                'location': volume.availability_zone}
 
         return data
 
@@ -72,7 +70,7 @@ class DirectTarget(driver.Target):
     def validate_connector(self, connector):
         # NOTE(jdg): api passes in connector which is initiator info
         if 'initiator' not in connector:
-            err_msg = ('The volume driver requires the iSCSI initiator '
+            err_msg = ('The volume driver requires the local initiator '
                        'name in the connector.')
             LOG.error(err_msg)
             raise exception.InvalidConnectorException(missing='initiator')
