@@ -35,149 +35,8 @@ class DirectTarget(driver.Target):
 
     def __init__(self, *args, **kwargs):
         super(DirectTarget, self).__init__(*args, **kwargs)
-        self.protocol = 'Local'
+        self.protocol = 'local'
         self.volumes_dir = self.configuration.safe_get('volumes_dir')
-
-    # def _get_iscsi_properties(self, volume, multipath=False):
-    #     """Gets iscsi configuration
-
-    #     We ideally get saved information in the volume entity, but fall back
-    #     to discovery if need be. Discovery may be completely removed in the
-    #     future.
-
-    #     The properties are:
-
-    #     :target_discovered:    boolean indicating whether discovery was used
-
-    #     :target_iqn:    the IQN of the iSCSI target
-
-    #     :target_portal:    the portal of the iSCSI target
-
-    #     :target_lun:    the lun of the iSCSI target
-
-    #     :volume_id:    the uuid of the volume
-
-    #     :auth_method:, :auth_username:, :auth_password:
-
-    #         the authentication details. Right now, either auth_method is not
-    #         present meaning no authentication, or auth_method == `CHAP`
-    #         meaning use CHAP with the specified credentials.
-
-    #     :discard:    boolean indicating if discard is supported
-
-    #     In some of drivers that support multiple connections (for multipath
-    #     and for single path with failover on connection failure), it returns
-    #     :target_iqns, :target_portals, :target_luns, which contain lists of
-    #     multiple values. The main portal information is also returned in
-    #     :target_iqn, :target_portal, :target_lun for backward compatibility.
-
-    #     Note that some of drivers don't return :target_portals even if they
-    #     support multipath. Then the connector should use sendtargets discovery
-    #     to find the other portals if it supports multipath.
-    #     """
-
-    #     properties = {}
-
-    #     location = volume['provider_location']
-
-    #     if location:
-    #         # provider_location is the same format as iSCSI discovery output
-    #         properties['target_discovered'] = False
-    #     else:
-    #         location = self._do_iscsi_discovery(volume)
-
-    #         if not location:
-    #             msg = (_("Could not find iSCSI export for volume %s") %
-    #                     (volume['name']))
-    #             raise exception.InvalidVolume(reason=msg)
-
-    #         LOG.debug("ISCSI Discovery: Found %s", location)
-    #         properties['target_discovered'] = True
-
-    #     results = location.split(" ")
-    #     portals = results[0].split(",")[0].split(";")
-    #     iqn = results[1]
-    #     nr_portals = len(portals)
-    #     try:
-    #         lun = int(results[2])
-    #     except (IndexError, ValueError):
-    #         # NOTE(jdg): The following is carried over from the existing
-    #         # code.  The trick here is that different targets use different
-    #         # default lun numbers, the base driver with tgtadm uses 1
-    #         # others like LIO use 0.
-    #         if (self.configuration.volume_driver ==
-    #                 'cinder.volume.drivers.lvm.ThinLVMVolumeDriver' and
-    #                 self.configuration.target_helper == 'tgtadm'):
-    #             lun = 1
-    #         else:
-    #             lun = 0
-
-    #     if nr_portals > 1 or multipath:
-    #         properties['target_portals'] = portals
-    #         properties['target_iqns'] = [iqn] * nr_portals
-    #         properties['target_luns'] = [lun] * nr_portals
-    #     properties['target_portal'] = portals[0]
-    #     properties['target_iqn'] = iqn
-    #     properties['target_lun'] = lun
-
-    #     properties['volume_id'] = volume['id']
-
-    #     auth = volume['provider_auth']
-    #     if auth:
-    #         (auth_method, auth_username, auth_secret) = auth.split()
-
-    #         properties['auth_method'] = auth_method
-    #         properties['auth_username'] = auth_username
-    #         properties['auth_password'] = auth_secret
-
-    #     geometry = volume.get('provider_geometry', None)
-    #     if geometry:
-    #         (physical_block_size, logical_block_size) = geometry.split()
-    #         properties['physical_block_size'] = physical_block_size
-    #         properties['logical_block_size'] = logical_block_size
-
-    #     encryption_key_id = volume.get('encryption_key_id', None)
-    #     properties['encrypted'] = encryption_key_id is not None
-
-    #     return properties
-
-    # def _iscsi_authentication(self, chap, name, password):
-    #     return "%s %s %s" % (chap, name, password)
-
-    # def _do_iscsi_discovery(self, volume):
-    #     # TODO(justinsb): Deprecate discovery and use stored info
-    #     # NOTE(justinsb): Discovery won't work with CHAP-secured targets (?)
-    #     LOG.warning("ISCSI provider_location not stored, using discovery")
-
-    #     volume_id = volume['id']
-
-    #     try:
-    #         # NOTE(griff) We're doing the split straight away which should be
-    #         # safe since using '@' in hostname is considered invalid
-
-    #         (out, _err) = utils.execute('iscsiadm', '-m', 'discovery',
-    #                                     '-t', 'sendtargets', '-p',
-    #                                     volume['host'].split('@')[0],
-    #                                     run_as_root=True)
-    #     except processutils.ProcessExecutionError as ex:
-    #         LOG.error("ISCSI discovery attempt failed for: %s",
-    #                   volume['host'].split('@')[0])
-    #         LOG.debug("Error from iscsiadm -m discovery: %s", ex.stderr)
-    #         return None
-
-    #     for target in out.splitlines():
-    #         if (self.configuration.safe_get('target_ip_address') in target
-    #                 and volume_id in target):
-    #             return target
-    #     return None
-
-    # def _get_portals_config(self):
-    #     # Prepare portals configuration
-    #     portals_ips = ([self.configuration.target_ip_address]
-    #                    + self.configuration.iscsi_secondary_ip_addresses or [])
-
-    #     return {'portals_ips': portals_ips,
-    #             'portals_port': self.configuration.target_port}
 
     def create_export(self, context, volume, volume_path):
         """Creates an export for a logical volume."""
@@ -185,6 +44,8 @@ class DirectTarget(driver.Target):
                   (volume, volume_path))
         data = dict()
         data['device_path'] = volume_path
+        data['auth'] = None
+        data['location'] = volume.availability_zone
 
         return data
 
@@ -202,7 +63,7 @@ class DirectTarget(driver.Target):
 
         return {
             'driver_volume_type': self.protocol,
-            'data': "TBD"
+            'data': {'device_path': "/dev/%s/volume-%s" % (self.configuration.safe_get('volume_group'), volume.id)}
         }
 
     def terminate_connection(self, volume, connector, **kwargs):
@@ -217,36 +78,6 @@ class DirectTarget(driver.Target):
             raise exception.InvalidConnectorException(missing='initiator')
         return True
 
-    # def _iscsi_location(self, ip, target, iqn, lun=None, ip_secondary=None):
-    #     ip_secondary = ip_secondary or []
-    #     port = self.configuration.target_port
-    #     portals = map(lambda x: "%s:%s" % (volume_utils.sanitize_host(x),
-    #                                        port),
-    #                   [ip] + ip_secondary)
-    #     return ("%(portals)s,%(target)s %(iqn)s %(lun)s"
-    #             % ({'portals': ";".join(portals),
-    #                 'target': target, 'iqn': iqn, 'lun': lun}))
-
-    # def show_target(self, iscsi_target, iqn, **kwargs):
-    #     if iqn is None:
-    #         raise exception.InvalidParameterValue(
-    #             err=_('valid iqn needed for show_target'))
-
-    #     tid = self._get_target(iqn)
-    #     if tid is None:
-    #         raise exception.NotFound()
-
-    # def _get_target_chap_auth(self, context, volume):
-    #     """Get the current chap auth username and password."""
-    #     try:
-    #         # Query DB to get latest state of volume
-    #         volume_info = self.db.volume_get(context, volume['id'])
-    #         # 'provider_auth': 'CHAP user_id password'
-    #         if volume_info['provider_auth']:
-    #             return tuple(volume_info['provider_auth'].split(' ', 3)[1:])
-    #     except exception.NotFound:
-    #         LOG.debug('Failed to get CHAP auth from DB for %s.', volume['id'])
-
     def extend_target(self, volume):
         """Reinitializes a target after the LV has been extended.
 
@@ -254,11 +85,6 @@ class DirectTarget(driver.Target):
         """
         LOG.debug("Extend target on volume %s" %
                   (volume))
-        # iscsi_name = "%s%s" % (self.configuration.target_prefix,
-        #                        volume['name'])
-
-        # if volume.volume_attachment:
-        #     self._do_tgt_update(iscsi_name, force=True)
 
     def _get_target_and_lun(self, context, volume):
         """Get iscsi target and lun."""
@@ -276,56 +102,3 @@ class DirectTarget(driver.Target):
 
     def _get_target(self, iqn):
         pass
-
-    # def _do_tgt_update(self, name, force=False):
-    #     pass
-
-
-# class SanISCSITarget(ISCSITarget):
-#     """iSCSI target for san devices.
-
-#     San devices are slightly different, they don't need to implement
-#     all of the same things that we need to implement locally fro LVM
-#     and local block devices when we create and manage our own targets.
-
-#     """
-#     @abc.abstractmethod
-#     def create_export(self, context, volume, volume_path):
-#         pass
-
-#     @abc.abstractmethod
-#     def remove_export(self, context, volume):
-#         pass
-
-#     @abc.abstractmethod
-#     def ensure_export(self, context, volume, volume_path):
-#         pass
-
-#     @abc.abstractmethod
-#     def terminate_connection(self, volume, connector, **kwargs):
-#         pass
-
-#     # NOTE(jdg): Items needed for local iSCSI target drivers,
-#     # but NOT sans Stub them out here to make abc happy
-
-#     # Use care when looking at these to make sure something
-#     # that's inheritted isn't dependent on one of
-#     # these.
-#     def _get_target_and_lun(self, context, volume):
-#         pass
-
-#     def _get_target_chap_auth(self, context, volume):
-#         pass
-
-#     def create_iscsi_target(self, name, tid, lun, path,
-#                             chap_auth, **kwargs):
-#         pass
-
-#     def remove_iscsi_target(self, tid, lun, vol_id, vol_name, **kwargs):
-#         pass
-
-#     def _get_iscsi_target(self, context, vol_id):
-#         pass
-
-#     def _get_target(self, iqn):
-#         pass
