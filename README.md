@@ -193,22 +193,6 @@ index 0000000..f07666f
 +        LOG.debug("Extend target on volume %s" %
 +                  (volume))
 +
-+    def _get_target_and_lun(self, context, volume):
-+        """Get iscsi target and lun."""
-+        pass
-+
-+    def create_iscsi_target(self, name, tid, lun, path,
-+                            chap_auth, **kwargs):
-+        pass
-+
-+    def remove_iscsi_target(self, tid, lun, vol_id, vol_name, **kwargs):
-+        pass
-+
-+    def _get_iscsi_target(self, context, vol_id):
-+        pass
-+
-+    def _get_target(self, iqn):
-+        pass
 ```
 
 Tested functionalities include (in fact inherited from current functions of lvm driver):
